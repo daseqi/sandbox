@@ -101,24 +101,6 @@ jobs:
         tf_actions_subcommand: 'output'
         tf_actions_working_dir: './infrastructure'
     
-    - name: S3 get bucket name
-      env:
-        TFOUTPUT: ${{ steps.terraform.outputs.tf_actions_output }}
-      run: |
-        BUCKETNAME=$(echo $TFOUTPUT | jq -r '.whitelist_bucket_name.value')
-        echo $BUCKETNAME
-        echo "AWS_S3_BUCKET=$BUCKETNAME" >> $GITHUB_ENV
-    
-    - name: S3 remove all objects
-      run: |
-        echo $AWS_S3_BUCKET
-        aws s3 rm s3://$AWS_S3_BUCKET --recursive --region $AWS_REGION
-
-    - name: S3 add cidr
-      run: |
-        echo $AWS_S3_BUCKET
-        aws s3 cp ../src/moodys-cidr.json s3://$AWS_S3_BUCKET --region $AWS_REGION
-    
     - name: TF destroy
       if: inputs.destroy-once-deployed
       run: terraform destroy -auto-approve $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
