@@ -1,0 +1,23 @@
+name: "Deployment Context"
+on:
+  workflow_call:
+    outputs:
+      context:
+        description: "Deployment contexts"
+        value: ${{ jobs.context.outputs.context }}
+  
+jobs:
+  context:
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    outputs:
+      context: ${{ steps.export-context.outputs.context }}
+    steps:
+    - id: export-context
+      env:
+        CONTEXT: "pr${{github.event.number}}"
+      run: |
+        echo $CONTEXT
+        echo "context=$CONTEXT" >> $GITHUB_OUTPUT
