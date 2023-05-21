@@ -103,4 +103,4 @@ jobs:
     
     - name: TF destroy
       if: inputs.destroy-once-deployed
-      run: terraform destroy -auto-approve $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
+      run: terraform destroy -auto-approve # $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
