@@ -1,0 +1,22 @@
+name: "Destroy Continuous Integration Pipeline"
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  context:
+    uses: ./.github/workflows/context.yml
+
+  destroy-infrastructure:
+    needs: [context]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      deployment-environment-abbreviation: dev
+      deployment-environment: feature
+      context: ${{ needs.context.outputs.context }}
+      refs: ${{ github.event.pull_request.head.sha }}
+      tf-working-directory: ./infrastructure
+      destroy-once-deployed: true
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

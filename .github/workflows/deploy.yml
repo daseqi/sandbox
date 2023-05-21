@@ -1,0 +1,106 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_call:
+    inputs:
+      tf-working-directory:
+        required: true
+        type: string
+      refs:
+        required: true
+        type: string
+      deployment-environment-abbreviation:
+        required: true
+        type: string
+      deployment-environment:
+        required: true
+        type: string
+      context:
+        required: true
+        type: string
+      destroy-once-deployed:
+        required: true
+        type: boolean
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    outputs:
+      workspace_name: ${{ steps.workspace-name.outputs.workspace_name }}
+    steps:
+        - id: workspace-name
+          env:
+            WORKSPACE_NAME: "${{ inputs.deployment-environment-abbreviation }}${{ inputs.context }}"
+          run: |
+            echo $WORKSPACE_NAME
+            echo "workspace_name=$WORKSPACE_NAME" >> $GITHUB_OUTPUT
+
+  terraform:
+    needs: workspace
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.deployment-environment }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.tf-working-directory }}
+    env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        DEP_ENV: ${{ inputs.deployment-environment }}
+        DEP_ENV_ABR: ${{ inputs.deployment-environment-abbreviation }}
+        CONTEXT: ${{ inputs.context }}
+        WORKSPACE_NAME: ${{ needs.workspace.outputs.workspace_name }}
+        TF_ENV_VAR_FILE: "-var-file=./environments/${{ inputs.deployment-environment-abbreviation }}.tfvars"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ inputs.refs }}
+    
+    - name: Verify Tools
+      run: |
+        terraform --version
+        sed --version
+        jq --version
+        aws --version
+    
+    - name: TF format
+      run: terraform fmt -recursive -check
+    
+    - name: TF init
+      run: terraform init -backend-config=backend/config
+
+    - name: TF validation
+      run: terraform validate
+    
+    - name: TF create workspace
+      run: |
+        tools/tf-workspace-safe-new.sh $WORKSPACE_NAME
+        echo $WORSPACE_NAME
+    
+    - name: TF select workspace
+      run: terraform workspace select $WORKSPACE_NAME
+
+    - name: TF plan
+      run: terraform plan # $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
+    
+    - name: TF apply
+      run: terraform apply -auto-approve # $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
+    
+    - name: TF output
+      id: terraform
+      uses: hashicorp/terraform-github-actions@master
+      with:
+        tf_actions_version: 1.3.2
+        tf_actions_subcommand: 'output'
+        tf_actions_working_dir: './infrastructure'
+    
+    - name: TF destroy
+      if: inputs.destroy-once-deployed
+      run: terraform destroy -auto-approve $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
