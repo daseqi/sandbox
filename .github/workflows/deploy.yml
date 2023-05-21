@@ -88,10 +88,10 @@ jobs:
       run: terraform workspace select $WORKSPACE_NAME
 
     - name: TF plan
-      run: terraform plan $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
+      run: terraform plan # $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
     
     - name: TF apply
-      run: terraform apply -auto-approve $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
+      run: terraform apply -auto-approve # $TF_ENV_VAR_FILE -var="deployment_context=$CONTEXT"
     
     - name: TF output
       id: terraform
